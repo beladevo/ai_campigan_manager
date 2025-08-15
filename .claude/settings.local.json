@@ -21,7 +21,10 @@
       "Bash(docker volume rm:*)",
       "Bash(docker volume:*)",
       "Bash(npm run build:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(npx tsc:*)",
+      "Bash(NODE_ENV=development npm run start)",
+      "Bash(POSTGRES_HOST=localhost POSTGRES_PORT=5432 POSTGRES_USER=postgres POSTGRES_PASSWORD=postgres POSTGRES_DB=solara RABBITMQ_URL=amqp://rabbitmq:rabbitmq@localhost:5672 JWT_SECRET=test-secret npm run start)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
