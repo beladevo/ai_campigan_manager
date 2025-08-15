@@ -4,9 +4,10 @@ import { CampaignController } from './campaign.controller';
 import { CampaignService } from './campaign.service';
 import { Campaign } from './entities/campaign.entity';
 import { RabbitMQModule } from '../rabbitmq/rabbitmq.module';
+import { WebSocketModule } from '../websocket/websocket.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Campaign]), RabbitMQModule],
+  imports: [TypeOrmModule.forFeature([Campaign]), RabbitMQModule, WebSocketModule],
   controllers: [CampaignController, CampaignService],
   providers: [CampaignService],
 })

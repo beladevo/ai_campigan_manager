@@ -1,14 +1,21 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { ServeStaticModule } from "@nestjs/serve-static";
+import { join } from "path";
 import { CampaignModule } from "./campaign/campaign.module";
 import { Campaign } from "./campaign/entities/campaign.entity";
 import { ConfigModule } from "./config/config.module";
 import { ConfigService } from "./config/config.service";
 import { ClientsModule, Transport } from "@nestjs/microservices";
+import { WebSocketModule } from "./websocket/websocket.module";
 
 @Module({
   imports: [
     ConfigModule,
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', '..', 'output'),
+      serveRoot: '/output',
+    }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -24,6 +31,7 @@ import { ClientsModule, Transport } from "@nestjs/microservices";
       inject: [ConfigService],
     }),
     CampaignModule,
+    WebSocketModule,
   ],
 })
 export class AppModule {}

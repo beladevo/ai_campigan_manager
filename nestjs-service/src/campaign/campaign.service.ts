@@ -11,6 +11,7 @@ import { Campaign, CampaignStatus } from "./entities/campaign.entity";
 import { CreateCampaignDto } from "./dto/create-campaign.dto";
 import { RabbitMQService } from "../rabbitmq/rabbitmq.service";
 import { CampaignResultMessage } from "../rabbitmq/types";
+import { CampaignWebSocketGateway } from "../websocket/websocket.gateway";
 
 @Controller()
 @Injectable()
@@ -20,7 +21,8 @@ export class CampaignService {
   constructor(
     @InjectRepository(Campaign)
     private campaignRepository: Repository<Campaign>,
-    private rabbitMQService: RabbitMQService
+    private rabbitMQService: RabbitMQService,
+    private webSocketGateway: CampaignWebSocketGateway
   ) {}
 
   async create(createCampaignDto: CreateCampaignDto): Promise<Campaign> {
@@ -31,6 +33,9 @@ export class CampaignService {
 
     const savedCampaign = await this.campaignRepository.save(campaign);
     this.logger.log(`Campaign created with ID: ${savedCampaign.id}`);
+
+    // Broadcast campaign creation via WebSocket
+    this.webSocketGateway.broadcastCampaignCreated(savedCampaign.userId, savedCampaign);
 
     try {
       await this.rabbitMQService.publishCampaignGeneration({
@@ -61,6 +66,13 @@ export class CampaignService {
       throw new NotFoundException(`Campaign with ID ${id} not found`);
     }
     return campaign;
+  }
+
+  async findByUser(userId: string): Promise<Campaign[]> {
+    return this.campaignRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' }
+    });
   }
 
   @EventPattern("campaign.result")
@@ -108,6 +120,12 @@ export class CampaignService {
           errorMessage: null,
         });
 
+        // Get the updated campaign and broadcast via WebSocket
+        const completedCampaign = await this.campaignRepository.findOne({ where: { id: campaignId } });
+        if (completedCampaign) {
+          this.webSocketGateway.broadcastCampaignUpdate(completedCampaign.userId, completedCampaign);
+        }
+
         this.logger.log(
           `Database updated successfully for campaign ${campaignId}`
         );
@@ -133,5 +151,18 @@ export class CampaignService {
       status,
       errorMessage,
     });
+
+    // Get the updated campaign and broadcast via WebSocket
+    const updatedCampaign = await this.campaignRepository.findOne({ where: { id: campaignId } });
+    if (updatedCampaign) {
+      this.webSocketGateway.broadcastCampaignUpdate(updatedCampaign.userId, updatedCampaign);
+      
+      if (status === CampaignStatus.FAILED && errorMessage) {
+        this.webSocketGateway.broadcastError(updatedCampaign.userId, {
+          message: errorMessage,
+          campaignId: campaignId
+        });
+      }
+    }
   }
 }

@@ -9,8 +9,21 @@
       "WebFetch(domain:ai.google.dev)",
       "Bash(python:*)",
       "Bash(timeout:*)",
-      "Bash(npm run start:*)"
+      "Bash(npm run start:*)",
+      "Bash(mkdir:*)",
+      "Bash(npx create-next-app:*)",
+      "Bash(npm install:*)",
+      "Bash(touch:*)",
+      "Bash(rm:*)",
+      "Bash(tasklist:*)",
+      "Bash(docker image rm:*)",
+      "Bash(docker system prune:*)",
+      "Bash(docker volume rm:*)",
+      "Bash(docker volume:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits"
   }
 }

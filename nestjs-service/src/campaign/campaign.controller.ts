@@ -15,6 +15,12 @@ export class CampaignController {
     return this.campaignService.create(createCampaignDto);
   }
 
+  @Get('user/:userId')
+  async getCampaignsByUser(@Param('userId') userId: string): Promise<Campaign[]> {
+    this.logger.log(`Fetching campaigns for user: ${userId}`);
+    return this.campaignService.findByUser(userId);
+  }
+
   @Get(':id')
   async getCampaign(@Param('id') id: string): Promise<Campaign> {
     this.logger.log(`Fetching campaign with ID: ${id}`);

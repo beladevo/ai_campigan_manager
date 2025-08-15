@@ -43,6 +43,7 @@ services:
     volumes:
       - ./nestjs-service:/app
       - nestjs-node-modules:/app/node_modules
+      - ./output:/app/output
     ports:
       - "3000:3000"
     environment:
@@ -100,7 +101,26 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  ui-frontend:
+    build: 
+      context: ./ui-frontend
+      target: dev
+    command: npm run dev
+    volumes:
+      - ./ui-frontend:/app
+      - ui-node-modules:/app/node_modules
+    ports:
+      - "3001:3001"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - NODE_ENV=development
+    depends_on:
+      nestjs-service:
+        condition: service_started
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   rabbitmq-data:
   nestjs-node-modules:
+  ui-node-modules:

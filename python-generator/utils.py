@@ -12,65 +12,125 @@ logger = logging.getLogger(__name__)
 
 
 def create_marketing_prompt(user_prompt: str) -> str:
-    """Create enhanced marketing prompt for text generation."""
+    """Create enhanced marketing prompt for text generation using advanced prompt engineering."""
     return f"""
-You are a world-class marketing strategist and copywriter with expertise in persuasive content creation. Your task is to transform the given prompt into compelling marketing content that drives engagement and conversions.
+<role>You are an award-winning marketing strategist, copywriter, and consumer psychology expert with 15+ years of experience creating viral campaigns that drive measurable results. You understand the nuances of human psychology, persuasion principles, and data-driven marketing.</role>
 
-**ORIGINAL REQUEST:** {user_prompt}
+<context>
+Original Request: {user_prompt}
+</context>
 
-**YOUR MISSION:** Create comprehensive marketing content that includes:
+<task>
+Transform this request into a complete, high-converting marketing campaign that would perform exceptionally across digital platforms (social media, email, web, ads).
+</task>
 
-**1. ATTENTION-GRABBING HEADLINE**
-- Craft a powerful, benefit-driven headline that immediately captures attention
-- Use action words, emotional triggers, and clear value propositions
-- Make it memorable and shareable
+<output_format>
+🎯 **MAGNETIC HEADLINE**
+[Create a headline that stops scrolling and demands attention. Use power words, numbers, curiosity gaps, or benefit-driven language]
 
-**2. COMPELLING DESCRIPTION**
-- Write vivid, sensory-rich descriptions that paint a clear mental picture
-- Use storytelling elements to create emotional connection
-- Include specific details that make the content tangible and relatable
-- Address pain points and position the solution naturally
+📱 **HOOK DESCRIPTION** 
+[Write a compelling opening that creates immediate emotional connection. Use storytelling, sensory details, or relatable scenarios]
 
-**3. KEY BENEFITS & FEATURES**
-- Highlight 3-5 primary benefits that matter most to the target audience
-- Transform features into customer-focused benefits
-- Use social proof indicators where relevant
-- Create urgency or scarcity when appropriate
+🔥 **CORE VALUE PROPOSITIONS**
+- [Primary benefit that solves the biggest pain point]
+- [Secondary benefit that creates desire]
+- [Unique differentiator that beats competition]
 
-**4. STRATEGIC CALL-TO-ACTION**
-- Provide multiple CTA options for different customer journey stages
-- Use action-oriented, specific language
-- Create clear next steps for engagement
+⚡ **EMOTIONAL TRIGGERS**
+[Incorporate proven psychological triggers: urgency, scarcity, social proof, fear of missing out, transformation promise]
 
-Begin creating exceptional marketing content now:
+🎨 **VIVID DESCRIPTIONS**
+[Paint a picture of the transformed life/outcome. Use specific, measurable details and sensory language]
+
+🏆 **SOCIAL PROOF ELEMENTS**
+[Include implied testimonials, statistics, or authority positioning]
+
+🚀 **COMPELLING CALL-TO-ACTION**
+[Multiple CTA options for different customer stages: awareness, consideration, decision]
+</output_format>
+
+<constraints>
+- Use active voice and action-oriented language
+- Include specific numbers/metrics when possible
+- Apply persuasion principles (reciprocity, commitment, social proof)
+- Make it shareable and memorable
+- Optimize for modern attention spans (scannable, benefit-focused)
+- Ensure authenticity and avoid overly salesy language
+</constraints>
+
+<examples_of_excellence>
+Great headlines: "How [Target Audience] [Achieved Specific Result] in [Timeframe]"
+Strong hooks: "Everyone told me [common belief], but then I discovered [surprising truth]..."
+Powerful CTAs: "Join [X number] of [target audience] who are already [achieving result]"
+</examples_of_excellence>
+
+Generate exceptional marketing content now:
 """
 
 
 def create_image_prompt(user_prompt: str) -> str:
-    """Create optimized image generation prompt."""
+    """Create optimized image generation prompt using advanced visual prompt engineering."""
     return f"""
-Create a stunning, professional-grade marketing image based on this concept: {user_prompt}
+<visual_brief>
+Create a premium, award-winning marketing visual for: {user_prompt}
+</visual_brief>
 
-**VISUAL CONCEPT REQUIREMENTS:**
-🎯 **Style & Aesthetics:**
-- Premium commercial photography or high-end digital art style
-- Modern, clean, and sophisticated aesthetic
-- Award-winning composition with rule of thirds
-- Professional color grading and balanced exposure
+<style_direction>
+**ARTISTIC EXCELLENCE:**
+- Ultra-high-end commercial photography style (think Apple, Tesla, Nike campaigns)
+- Perfect composition using golden ratio and rule of thirds
+- Studio-quality lighting with professional color grading
+- Crisp, tack-sharp focus with strategic depth of field
+- Luxurious, aspirational aesthetic that commands attention
 
-🎨 **Color & Lighting:**
-- Vibrant yet sophisticated color palette
-- Dramatic, cinematic lighting with perfect shadows and highlights
-- Rich contrast and visual depth
-- Colors that evoke emotion and brand trust
+**TECHNICAL SPECIFICATIONS:**
+- High contrast, rich saturation with balanced highlights/shadows
+- Cinematic color palette with complementary accent colors
+- Professional retouching and post-processing quality
+- Social media optimized (square/vertical friendly)
+- Scalable design elements that work across all platforms
+</style_direction>
 
-🌟 **Marketing Impact:**
-- Emotionally compelling and aspirational
-- Instantly recognizable and memorable
-- Social media and advertising optimized
-- Cross-platform compatible design
+<emotional_impact>
+**PSYCHOLOGICAL TRIGGERS:**
+- Evoke aspiration, success, and positive transformation
+- Create immediate emotional connection and desire
+- Use visual metaphors that reinforce the core message
+- Include subtle luxury/premium visual cues
+- Design for maximum shareability and viral potential
 
-Generate an exceptional, commercially-viable marketing image now:
+**BRAND PERCEPTION:**
+- Convey trustworthiness, innovation, and market leadership
+- Appeal to target demographic lifestyle aspirations
+- Differentiate from competitors through unique visual approach
+- Build instant brand recognition and recall
+</emotional_impact>
+
+<composition_elements>
+**VISUAL HIERARCHY:**
+- Clear focal point that draws the eye immediately
+- Supporting elements that guide viewer through the narrative
+- Balanced negative space for text overlay compatibility
+- Strategic use of leading lines and visual flow
+- Optimized for both mobile and desktop viewing
+
+**COLOR PSYCHOLOGY:**
+- Use colors that align with the emotional goal of the campaign
+- Create sophisticated color harmony (monochromatic, complementary, or triadic)
+- Ensure accessibility and cross-cultural appeal
+- Apply consistent brand color integration where appropriate
+</composition_elements>
+
+<output_requirements>
+Generate a visually stunning, commercially-viable image that:
+- Stops scrolling on social media feeds instantly
+- Communicates the core value proposition at first glance
+- Works perfectly for ads, websites, and marketing materials
+- Demonstrates clear professional photography/design standards
+- Creates strong emotional response and desire to engage
+</output_requirements>
+
+Create an exceptional marketing visual now:
 """
 
 
@@ -117,7 +177,8 @@ def create_enhanced_placeholder(campaign_id: str, output_dir: Path, prompt: str 
         img.save(image_path, "PNG", optimize=True)
         
         logger.info(f"[{campaign_id}] Enhanced placeholder created: {image_path}")
-        return str(image_path)
+        # Return just the filename for NestJS static serving
+        return filename
         
     except Exception as e:
         logger.error(f"[{campaign_id}] Failed to create placeholder: {e}")
@@ -146,7 +207,8 @@ def process_image_response(response, campaign_id: str, output_dir: Path, prompt:
                 image.save(image_path, "PNG", optimize=True, quality=95)
                 
                 logger.info(f"[{campaign_id}] Image saved: {image_path} ({image.size[0]}x{image.size[1]})")
-                return str(image_path)
+                # Return just the filename for NestJS static serving
+                return filename
         
         return None
         
