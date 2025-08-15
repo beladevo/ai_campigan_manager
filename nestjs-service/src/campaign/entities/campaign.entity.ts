@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { User } from '../../user/entities/user.entity';
 
 export enum CampaignStatus {
   PENDING = 'pending',
@@ -14,6 +15,10 @@ export class Campaign {
 
   @Column({ name: 'user_id' })
   userId: string;
+
+  @ManyToOne(() => User, user => user.campaigns)
+  @JoinColumn({ name: 'user_id' })
+  user: User;
 
   @Column({ type: 'text' })
   prompt: string;

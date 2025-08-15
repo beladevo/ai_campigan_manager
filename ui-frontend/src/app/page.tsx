@@ -1,18 +1,26 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
+import AuthForm from '@/components/AuthForm';
 import CampaignCreator from '@/components/CampaignCreator';
 import CampaignDashboard from '@/components/CampaignDashboard';
 import UserProfile from '@/components/UserProfile';
 import { Campaign } from '@/types/campaign';
-import { getAllCampaigns } from '@/lib/api';
+import { getAllCampaigns, getUserUsage } from '@/lib/api';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { User, Plus, LayoutDashboard } from 'lucide-react';
 
-export default function Home() {
+function AuthenticatedApp() {
+  const { user, logout, isAuthenticated } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [activeTab, setActiveTab] = useState<'create' | 'dashboard'>('create');
-  const [userId, setUserId] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [showUserProfile, setShowUserProfile] = useState(false);
+  const [usage, setUsage] = useState<{
+    campaignsUsedThisMonth: number;
+    subscriptionTier: string;
+    canCreateCampaign: boolean;
+  } | null>(null);
 
   // WebSocket for real-time updates
   const { isConnected, joinUserRoom, leaveUserRoom } = useWebSocket({
@@ -26,196 +34,217 @@ export default function Home() {
     },
     onCampaignCreated: (data) => {
       console.log('✨ Campaign created:', data);
-      // Don't add here since we already add it in handleCampaignCreated
+      // Refresh campaigns list
+      loadCampaigns();
+      loadUsage();
     },
     onCampaignError: (data) => {
       console.error('❌ Campaign error:', data);
-      // Could show a toast notification here
-    },
-    onNotification: (data) => {
-      console.log('📢 Notification:', data);
-      // Could show a toast notification here
     },
   });
 
+  // Join user room when authenticated
   useEffect(() => {
-    const savedUserId = localStorage.getItem('solara_user_id');
-    if (savedUserId) {
-      setUserId(savedUserId);
-      loadUserCampaigns(savedUserId);
+    if (user && isConnected) {
+      joinUserRoom(user.id);
+      return () => leaveUserRoom(user.id);
     }
-  }, []);
+  }, [user, isConnected, joinUserRoom, leaveUserRoom]);
 
-  // Join/leave WebSocket room when userId changes
+  // Load campaigns and usage when authenticated
   useEffect(() => {
-    if (userId && isConnected) {
-      joinUserRoom(userId);
-      return () => {
-        leaveUserRoom(userId);
-      };
+    if (user) {
+      loadCampaigns();
+      loadUsage();
     }
-  }, [userId, isConnected, joinUserRoom, leaveUserRoom]);
+  }, [user]);
 
-  const loadUserCampaigns = async (userIdToLoad: string) => {
-    if (!userIdToLoad) return;
+  const loadCampaigns = async () => {
+    if (!user) return;
     
-    setIsLoading(true);
     try {
-      const userCampaigns = await getAllCampaigns(userIdToLoad);
+      const userCampaigns = await getAllCampaigns();
       setCampaigns(userCampaigns);
     } catch (error) {
       console.error('Failed to load campaigns:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const handleUserIdChange = (newUserId: string) => {
-    setUserId(newUserId);
-    if (newUserId) {
-      loadUserCampaigns(newUserId);
-    } else {
-      setCampaigns([]);
+  const loadUsage = async () => {
+    if (!user) return;
+    
+    try {
+      const usageData = await getUserUsage();
+      setUsage(usageData);
+    } catch (error) {
+      console.error('Failed to load usage:', error);
     }
   };
 
-  const handleCampaignCreated = (campaign: Campaign) => {
-    setCampaigns(prev => [campaign, ...prev]);
+  const handleCampaignCreated = (newCampaign: Campaign) => {
+    setCampaigns(prev => [newCampaign, ...prev]);
     setActiveTab('dashboard');
+    loadUsage(); // Refresh usage after creating a campaign
   };
 
-  if (!userId) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="container mx-auto px-4 py-8">
-          <header className="text-center mb-12">
-            <h1 className="text-5xl font-bold text-gray-900 mb-4">
-              Solara AI <span className="text-indigo-600">Content Studio</span>
-            </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-12">
-              Create stunning marketing content for your business with AI-powered generation. 
-              Perfect for e-commerce, social media, and professional campaigns.
-            </p>
-          </header>
-
-          <div className="max-w-md mx-auto">
-            <UserProfile userId={userId} onUserIdChange={handleUserIdChange} />
-          </div>
-        </div>
-      </div>
-    );
+  if (!isAuthenticated || !user) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Enhanced Header with Animation */}
-        <header className="text-center mb-12 animate-fade-in">
-          <div className="relative">
-            <h1 className="text-6xl font-bold text-gray-900 mb-6 leading-tight">
-              Solara AI <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">Content Studio</span>
-            </h1>
-            <div className="absolute inset-0 -z-10">
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-gradient-to-r from-indigo-200 to-purple-200 rounded-full blur-3xl opacity-30 animate-pulse"></div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo */}
+            <div className="flex items-center">
+              <div className="flex-shrink-0 flex items-center">
+                <div className="h-8 w-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">S</span>
+                </div>
+                <span className="ml-2 text-xl font-bold text-gray-900">Solara AI</span>
+              </div>
             </div>
-          </div>
-          <p className="text-xl text-gray-700 max-w-4xl mx-auto leading-relaxed">
-            Transform your ideas into stunning marketing content with cutting-edge AI. 
-            From social media posts to product launches—create professional campaigns in seconds.
-          </p>
-          
-          {/* Feature Pills */}
-          <div className="flex flex-wrap justify-center gap-3 mt-8">
-            {['AI-Powered', 'Fast Generation', 'Professional Quality', 'Multiple Formats'].map((feature, index) => (
-              <span 
-                key={feature}
-                className="px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full text-sm font-medium text-gray-700 shadow-sm border border-gray-200 animate-slide-up"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                {feature}
-              </span>
-            ))}
-          </div>
-          
-          {/* WebSocket Status Indicator */}
-          <div className="flex justify-center mt-6">
-            <div className={`flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-              isConnected 
-                ? 'bg-green-100 text-green-700 border border-green-200' 
-                : 'bg-red-100 text-red-700 border border-red-200'
-            }`}>
-              <div className={`w-2 h-2 rounded-full mr-2 ${
-                isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'
-              }`}></div>
-              {isConnected ? 'Real-time updates active' : 'Connecting...'}
-            </div>
-          </div>
-        </header>
 
-        {/* User Profile with Better Styling */}
-        <div className="max-w-6xl mx-auto mb-10">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/50 p-6">
-            <UserProfile userId={userId} onUserIdChange={handleUserIdChange} />
+            {/* Navigation */}
+            <div className="flex items-center space-x-4">
+              <nav className="flex space-x-1">
+                <button
+                  onClick={() => setActiveTab('create')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === 'create'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <Plus className="w-4 h-4 inline mr-1" />
+                  Create
+                </button>
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === 'dashboard'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <LayoutDashboard className="w-4 h-4 inline mr-1" />
+                  Dashboard
+                </button>
+              </nav>
+
+              {/* Usage indicator */}
+              {usage && (
+                <div className="text-xs text-gray-500">
+                  {usage.campaignsUsedThisMonth} / {usage.subscriptionTier === 'enterprise' ? '∞' : 
+                    usage.subscriptionTier === 'business' ? '200' :
+                    usage.subscriptionTier === 'premium' ? '50' : '5'} this month
+                </div>
+              )}
+
+              {/* Connection status */}
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} title={isConnected ? 'Connected' : 'Disconnected'} />
+
+              {/* User menu */}
+              <button
+                onClick={() => setShowUserProfile(true)}
+                className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 transition-colors"
+              >
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 text-blue-600" />
+                </div>
+                <span className="text-sm font-medium">{user.firstName}</span>
+              </button>
+            </div>
           </div>
         </div>
+      </header>
 
-        {/* Enhanced Navigation */}
-        <nav className="flex justify-center mb-10">
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-2 shadow-xl border border-white/50">
-            <button
-              onClick={() => setActiveTab('create')}
-              className={`px-8 py-4 rounded-xl font-semibold transition-all duration-300 transform ${
-                activeTab === 'create'
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg scale-105'
-                  : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50'
-              }`}
-            >
-              ✨ Create Campaign
-            </button>
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`px-8 py-4 rounded-xl font-semibold transition-all duration-300 transform ${
-                activeTab === 'dashboard'
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg scale-105'
-                  : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50'
-              }`}
-            >
-              📊 My Campaigns ({campaigns.length})
-            </button>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {activeTab === 'create' ? (
+          <div className="space-y-8">
+            <div className="text-center">
+              <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                Create Amazing Content with AI
+              </h1>
+              <p className="text-gray-600 max-w-2xl mx-auto">
+                Generate professional marketing content, social media posts, and engaging copy 
+                with our advanced AI technology.
+              </p>
+            </div>
+            <CampaignCreator 
+              onCampaignCreated={handleCampaignCreated}
+              usage={usage}
+            />
           </div>
-        </nav>
-
-        {/* Enhanced Main Content */}
-        <main className="max-w-6xl mx-auto">
-          {isLoading ? (
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/50 p-16 text-center">
-              <div className="relative mb-8">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto"></div>
-                <div className="absolute inset-0 rounded-full h-16 w-16 border-4 border-indigo-200 mx-auto"></div>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Loading your campaigns...</h3>
-              <p className="text-gray-600">Please wait while we fetch your content</p>
+        ) : (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h1 className="text-2xl font-bold text-gray-900">Your Campaigns</h1>
+              <button
+                onClick={() => setActiveTab('create')}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                New Campaign
+              </button>
             </div>
-          ) : activeTab === 'create' ? (
-            <div className="animate-slide-up">
-              <CampaignCreator onCampaignCreated={handleCampaignCreated} userId={userId} />
-            </div>
-          ) : (
-            <div className="animate-slide-up">
-              <CampaignDashboard campaigns={campaigns} setCampaigns={setCampaigns} />
-            </div>
-          )}
-        </main>
-
-        {/* Enhanced Footer */}
-        <footer className="text-center mt-20 py-8">
-          <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 py-6 px-8 inline-block">
-            <p className="text-gray-600 font-medium">
-              🚀 Powered by <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 font-bold">Solara AI Mini System</span>
-            </p>
+            <CampaignDashboard campaigns={campaigns} setCampaigns={setCampaigns} />
           </div>
-        </footer>
-      </div>
+        )}
+      </main>
+
+      {/* User Profile Modal */}
+      {user && (
+        <UserProfile
+          user={{
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            subscriptionTier: user.subscriptionTier,
+            campaignsUsedThisMonth: usage?.campaignsUsedThisMonth || 0,
+          }}
+          onLogout={logout}
+          isVisible={showUserProfile}
+          onClose={() => setShowUserProfile(false)}
+        />
+      )}
     </div>
   );
+}
+
+function LoginPage() {
+  const { login, register, isLoading, error } = useAuth();
+
+  return (
+    <AuthForm
+      onLogin={login}
+      onRegister={register}
+      isLoading={isLoading}
+      error={error}
+    />
+  );
+}
+
+export default function Home() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
+function AppContent() {
+  const { isAuthenticated } = useAuth();
+
+  if (isAuthenticated) {
+    return <AuthenticatedApp />;
+  } else {
+    return <LoginPage />;
+  }
 }

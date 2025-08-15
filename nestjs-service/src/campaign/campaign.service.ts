@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   Controller,
+  ForbiddenException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -12,6 +13,8 @@ import { CreateCampaignDto } from "./dto/create-campaign.dto";
 import { RabbitMQService } from "../rabbitmq/rabbitmq.service";
 import { CampaignResultMessage } from "../rabbitmq/types";
 import { CampaignWebSocketGateway } from "../websocket/websocket.gateway";
+import { AuthService } from "../auth/auth.service";
+import { User } from "../user/entities/user.entity";
 
 @Controller()
 @Injectable()
@@ -22,17 +25,27 @@ export class CampaignService {
     @InjectRepository(Campaign)
     private campaignRepository: Repository<Campaign>,
     private rabbitMQService: RabbitMQService,
-    private webSocketGateway: CampaignWebSocketGateway
+    private webSocketGateway: CampaignWebSocketGateway,
+    private authService: AuthService
   ) {}
 
-  async create(createCampaignDto: CreateCampaignDto): Promise<Campaign> {
+  async create(createCampaignDto: CreateCampaignDto, user: User): Promise<Campaign> {
+    // Check usage quota
+    const canCreateCampaign = await this.authService.checkUsageQuota(user.id);
+    if (!canCreateCampaign) {
+      throw new ForbiddenException('Monthly campaign limit reached. Please upgrade your subscription.');
+    }
     const campaign = this.campaignRepository.create({
       ...createCampaignDto,
+      userId: user.id,
       status: CampaignStatus.PENDING,
     });
 
     const savedCampaign = await this.campaignRepository.save(campaign);
     this.logger.log(`Campaign created with ID: ${savedCampaign.id}`);
+
+    // Increment user's campaign usage
+    await this.authService.incrementUsage(user.id);
 
     // Broadcast campaign creation via WebSocket
     this.webSocketGateway.broadcastCampaignCreated(savedCampaign.userId, savedCampaign);
@@ -60,11 +73,17 @@ export class CampaignService {
     return savedCampaign;
   }
 
-  async findOne(id: string): Promise<Campaign> {
+  async findOne(id: string, user?: User): Promise<Campaign> {
     const campaign = await this.campaignRepository.findOne({ where: { id } });
     if (!campaign) {
       throw new NotFoundException(`Campaign with ID ${id} not found`);
     }
+    
+    // Enforce ownership unless user is admin
+    if (user && user.role !== 'admin' && campaign.userId !== user.id) {
+      throw new ForbiddenException('Access denied to this campaign');
+    }
+    
     return campaign;
   }
 

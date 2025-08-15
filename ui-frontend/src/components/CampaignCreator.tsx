@@ -61,10 +61,14 @@ const getIcon = (iconName: string) => {
 
 interface CampaignCreatorProps {
   onCampaignCreated: (campaign: Campaign) => void;
-  userId: string;
+  usage?: {
+    campaignsUsedThisMonth: number;
+    subscriptionTier: string;
+    canCreateCampaign: boolean;
+  } | null;
 }
 
-export default function CampaignCreator({ onCampaignCreated, userId }: CampaignCreatorProps) {
+export default function CampaignCreator({ onCampaignCreated, usage }: CampaignCreatorProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<CampaignTemplate | null>(null);
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -78,12 +82,17 @@ export default function CampaignCreator({ onCampaignCreated, userId }: CampaignC
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prompt.trim() || !userId.trim()) return;
+    if (!prompt.trim()) return;
+
+    // Check usage quota
+    if (usage && !usage.canCreateCampaign) {
+      alert('You have reached your monthly campaign limit. Please upgrade your subscription to create more campaigns.');
+      return;
+    }
 
     setIsLoading(true);
     try {
-      const request: CreateCampaignRequest = {
-        userId: userId.trim(),
+      const request: Omit<CreateCampaignRequest, 'userId'> = {
         prompt: prompt.trim()
       };
       
@@ -117,6 +126,23 @@ export default function CampaignCreator({ onCampaignCreated, userId }: CampaignC
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Select a professionally crafted template or start from scratch with your own vision
           </p>
+          
+          {/* Usage indicator */}
+          {usage && (
+            <div className="mt-6 inline-flex items-center px-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm text-gray-600">
+              <span className="mr-2">Monthly usage:</span>
+              <span className="font-semibold">
+                {usage.campaignsUsedThisMonth} / {usage.subscriptionTier === 'enterprise' ? '∞' : 
+                  usage.subscriptionTier === 'business' ? '200' :
+                  usage.subscriptionTier === 'premium' ? '50' : '5'}
+              </span>
+              {!usage.canCreateCampaign && (
+                <span className="ml-2 px-2 py-1 bg-red-100 text-red-600 rounded text-xs">
+                  Limit reached
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
