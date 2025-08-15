@@ -43,5 +43,3 @@ import { WebSocketModule } from "./websocket/websocket.module";
   ],
 })
 export class AppModule {}
-
-// dead letter queue
