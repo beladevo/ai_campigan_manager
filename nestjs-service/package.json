@@ -4,7 +4,9 @@
   "scripts": {
     "build": "npx tsc",
     "start": "npm run build && node dist/main.js",
-    "start:dev": "nodemon --watch src --ext ts --exec npm run start"
+    "start:dev": "nodemon --watch src --ext ts --exec npm run start",
+    "seed": "npm run build && node dist/database/commands/seed.command.js",
+    "seed:dev": "ts-node src/database/commands/seed.command.ts"
   },
   "dependencies": {
     "@nestjs/common": "^9.0.0",

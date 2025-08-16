@@ -11,6 +11,10 @@ import { ConfigModule } from "./config/config.module";
 import { ConfigService } from "./config/config.service";
 import { ClientsModule, Transport } from "@nestjs/microservices";
 import { WebSocketModule } from "./websocket/websocket.module";
+import { SeederModule } from "./database/seeders/seeder.module";
+import { NotificationModule } from "./notification/notification.module";
+import { Notification } from "./notification/entities/notification.entity";
+import { NotificationPreference } from "./notification/entities/notification-preference.entity";
 
 @Module({
   imports: [
@@ -20,7 +24,7 @@ import { WebSocketModule } from "./websocket/websocket.module";
       limit: 20,
     }),
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', '..', 'output'),
+      rootPath: join(__dirname, '..', 'output'),
       serveRoot: '/output',
     }),
     TypeOrmModule.forRootAsync({
@@ -32,7 +36,7 @@ import { WebSocketModule } from "./websocket/websocket.module";
         username: configService.postgresUser,
         password: configService.postgresPassword,
         database: configService.postgresDatabase,
-        entities: [Campaign, User],
+        entities: [Campaign, User, Notification, NotificationPreference],
         synchronize: true,
       }),
       inject: [ConfigService],
@@ -40,6 +44,8 @@ import { WebSocketModule } from "./websocket/websocket.module";
     AuthModule,
     CampaignModule,
     WebSocketModule,
+    SeederModule,
+    NotificationModule,
   ],
 })
 export class AppModule {}

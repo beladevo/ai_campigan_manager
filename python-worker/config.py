@@ -57,5 +57,9 @@ class Config:
     def health_check_interval(self) -> int:
         return int(os.getenv("HEALTH_CHECK_INTERVAL", "30"))
 
+    @property
+    def nestjs_url(self) -> str:
+        return os.getenv("NESTJS_URL", "http://nestjs-service:3000")
+
 
 config = Config()

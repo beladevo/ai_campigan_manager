@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Param, Post, Logger, UseGuards, Request } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Logger, UseGuards, Request } from '@nestjs/common';
 import { CampaignService } from './campaign.service';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
-import { Campaign } from './entities/campaign.entity';
+import { Campaign, CampaignStatus, CampaignStep } from './entities/campaign.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('campaigns')
@@ -27,6 +27,25 @@ export class CampaignController {
   async getCampaign(@Param('id') id: string, @Request() req): Promise<Campaign> {
     this.logger.log(`Fetching campaign with ID: ${id}`);
     return this.campaignService.findOne(id, req.user);
+  }
+
+  @Put(':id/progress')
+  async updateProgress(
+    @Param('id') id: string,
+    @Body() body: {
+      status: CampaignStatus;
+      currentStep: CampaignStep;
+      progressPercentage: number;
+    }
+  ) {
+    this.logger.log(`Updating progress for campaign ${id}: ${body.currentStep} (${body.progressPercentage}%)`);
+    await this.campaignService.updateCampaignProgress(
+      id,
+      body.status,
+      body.currentStep,
+      body.progressPercentage
+    );
+    return { status: 'progress updated' };
   }
 
   @Post('test-queue')

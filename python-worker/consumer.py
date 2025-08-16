@@ -9,6 +9,7 @@ from datetime import datetime
 
 from producer import send_result
 from utils import make_http_request, parse_campaign_message
+from progress_updater import progress_updater
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,11 @@ async def process_campaign_message(
 
             logger.info(f"[{campaign_id}] Processing campaign generation request")
             logger.info(f"[{campaign_id}] Prompt: {prompt}")
+
+            # Update progress to generating_text
+            await progress_updater.update_progress(
+                campaign_id, "PROCESSING", "generating_text", 30
+            )
 
             result = await delegate_to_generator(campaign_id, prompt)
 
@@ -56,6 +62,11 @@ async def delegate_to_generator(campaign_id: str, prompt: str) -> Dict[str, Any]
     try:
         logger.info(f"[{campaign_id}] Delegating to python-generator service")
 
+        # Update progress to generating_image
+        await progress_updater.update_progress(
+            campaign_id, "PROCESSING", "generating_image", 60
+        )
+
         generator_request = {"campaignId": campaign_id, "prompt": prompt}
 
         response = await make_http_request(
@@ -63,6 +74,11 @@ async def delegate_to_generator(campaign_id: str, prompt: str) -> Dict[str, Any]
         )
 
         logger.info(f"[{campaign_id}] Received response from python-generator")
+
+        # Update progress to finalizing
+        await progress_updater.update_progress(
+            campaign_id, "PROCESSING", "finalizing", 90
+        )
 
         return {
             "campaignId": response["campaignId"],

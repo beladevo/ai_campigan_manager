@@ -43,6 +43,7 @@ services:
     volumes:
       - ./nestjs-service:/app
       - nestjs-node-modules:/app/node_modules
+      - ./output:/app/output
     ports:
       - "3000:3000"
     environment:

@@ -71,6 +71,12 @@ export class User {
   @OneToMany(() => Campaign, campaign => campaign.user)
   campaigns: Campaign[];
 
+  @OneToMany('NotificationPreference', 'user')
+  notificationPreferences: any[];
+
+  @OneToMany('Notification', 'user')
+  notifications: any[];
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

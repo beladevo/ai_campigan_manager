@@ -7,7 +7,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { EventPattern } from "@nestjs/microservices";
-import { Campaign, CampaignStatus } from "./entities/campaign.entity";
+import { Campaign, CampaignStatus, CampaignStep } from "./entities/campaign.entity";
 import { CreateCampaignDto } from "./dto/create-campaign.dto";
 import { RabbitMQService } from "../rabbitmq/rabbitmq.service";
 import { CampaignResultMessage } from "../rabbitmq/types";
@@ -23,10 +23,13 @@ export class CampaignService {
     private rabbitMQService: RabbitMQService
   ) {}
 
-  async create(createCampaignDto: CreateCampaignDto): Promise<Campaign> {
+  async create(createCampaignDto: CreateCampaignDto, user: any): Promise<Campaign> {
     const campaign = this.campaignRepository.create({
       ...createCampaignDto,
+      userId: user.id,
       status: CampaignStatus.PENDING,
+      currentStep: CampaignStep.QUEUED,
+      progressPercentage: 0,
     });
 
     const savedCampaign = await this.campaignRepository.save(campaign);
@@ -38,9 +41,12 @@ export class CampaignService {
         prompt: savedCampaign.prompt,
       });
 
-      await this.updateCampaignStatus(
+      await this.updateCampaignProgress(
         savedCampaign.id,
-        CampaignStatus.PROCESSING
+        CampaignStatus.PROCESSING,
+        CampaignStep.QUEUED,
+        10,
+        new Date()
       );
       this.logger.log(`Campaign ${savedCampaign.id} queued for processing`);
     } catch (error) {
@@ -55,12 +61,21 @@ export class CampaignService {
     return savedCampaign;
   }
 
-  async findOne(id: string): Promise<Campaign> {
-    const campaign = await this.campaignRepository.findOne({ where: { id } });
+  async findOne(id: string, user: any): Promise<Campaign> {
+    const campaign = await this.campaignRepository.findOne({ 
+      where: { id, userId: user.id } 
+    });
     if (!campaign) {
       throw new NotFoundException(`Campaign with ID ${id} not found`);
     }
     return campaign;
+  }
+
+  async findByUser(userId: string): Promise<Campaign[]> {
+    return this.campaignRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' }
+    });
   }
 
   @EventPattern("campaign.result")
@@ -103,6 +118,9 @@ export class CampaignService {
           generatedText,
           imagePath,
           errorMessage: null,
+          currentStep: CampaignStep.DONE,
+          progressPercentage: 100,
+          completedAt: new Date(),
         });
 
         this.logger.log(
@@ -129,5 +147,25 @@ export class CampaignService {
       status,
       errorMessage,
     });
+  }
+
+  async updateCampaignProgress(
+    campaignId: string,
+    status: CampaignStatus,
+    currentStep: CampaignStep,
+    progressPercentage: number,
+    startedAt?: Date
+  ): Promise<void> {
+    const updateData: any = {
+      status,
+      currentStep,
+      progressPercentage,
+    };
+
+    if (startedAt) {
+      updateData.startedAt = startedAt;
+    }
+
+    await this.campaignRepository.update(campaignId, updateData);
   }
 }
