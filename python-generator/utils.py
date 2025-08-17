@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Optional
 from io import BytesIO
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
+import pillow_heif
 
 logger = logging.getLogger(__name__)
 
@@ -114,11 +115,32 @@ def create_enhanced_placeholder(campaign_id: str, output_dir: Path, prompt: str 
         img.save(image_path, "PNG", optimize=True)
         
         logger.info(f"[{campaign_id}] Enhanced placeholder created: {image_path}")
-        return str(image_path)
+        # Return only the filename, not the full path, for static file serving
+        return filename
         
     except Exception as e:
         logger.error(f"[{campaign_id}] Failed to create placeholder: {e}")
         return ""
+
+
+def optimize_image(image: Image.Image, max_size: tuple = (1200, 1200), quality: int = 85) -> Image.Image:
+    """Optimize image for web use with compression and resizing."""
+    # Convert to RGB if necessary
+    if image.mode in ('RGBA', 'LA', 'P'):
+        rgb_image = Image.new('RGB', image.size, (255, 255, 255))
+        if image.mode == 'P':
+            image = image.convert('RGBA')
+        rgb_image.paste(image, mask=image.split()[-1] if 'A' in image.mode else None)
+        image = rgb_image
+    
+    # Resize if too large
+    if image.size[0] > max_size[0] or image.size[1] > max_size[1]:
+        image.thumbnail(max_size, Image.Resampling.LANCZOS)
+    
+    # Apply slight sharpening for web display
+    image = image.filter(ImageFilter.UnsharpMask(radius=0.5, percent=150, threshold=3))
+    
+    return image
 
 
 def process_image_response(response, campaign_id: str, output_dir: Path, prompt: str) -> Optional[str]:
@@ -136,13 +158,36 @@ def process_image_response(response, campaign_id: str, output_dir: Path, prompt:
                 image_data = part.inline_data.data
                 image = Image.open(BytesIO(image_data))
                 
+                # Optimize the image
+                optimized_image = optimize_image(image, max_size=(1200, 1200), quality=85)
+                
                 filename = f"campaign_{campaign_id}_{uuid.uuid4().hex[:8]}.png"
                 image_path = output_dir / filename
                 
-                image.save(image_path, "PNG", optimize=True, quality=95)
+                # Save with optimization
+                optimized_image.save(
+                    image_path, 
+                    "PNG", 
+                    optimize=True,
+                    compress_level=6  # PNG compression level (0-9)
+                )
                 
-                logger.info(f"[{campaign_id}] Image saved: {image_path} ({image.size[0]}x{image.size[1]})")
-                return str(image_path)
+                # Create a WebP version for better compression
+                webp_filename = f"campaign_{campaign_id}_{uuid.uuid4().hex[:8]}.webp"
+                webp_path = output_dir / webp_filename
+                optimized_image.save(webp_path, "WEBP", quality=85, optimize=True)
+                
+                original_size = len(image_data)
+                png_size = image_path.stat().st_size
+                webp_size = webp_path.stat().st_size
+                
+                logger.info(f"[{campaign_id}] Image optimization complete:")
+                logger.info(f"  Original: {original_size:,} bytes")
+                logger.info(f"  PNG: {png_size:,} bytes ({optimized_image.size[0]}x{optimized_image.size[1]})")
+                logger.info(f"  WebP: {webp_size:,} bytes (saved {original_size - webp_size:,} bytes)")
+                
+                # Return the WebP filename for better performance
+                return webp_filename
         
         return None
         

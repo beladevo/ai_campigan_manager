@@ -2,8 +2,10 @@
 
 import { 
   User, Settings, LogOut, Crown, BarChart3, Mail, Calendar, 
-  Star, Shield, Zap, Sparkles, X, Edit, Camera 
+  Star, Shield, Zap, Sparkles, X, Edit, Camera, Bell 
 } from 'lucide-react';
+import { useState } from 'react';
+import NotificationSettings from './NotificationSettings';
 
 interface UserProfileProps {
   user: {
@@ -41,6 +43,8 @@ const TIER_FEATURES = {
 };
 
 export default function UserProfile({ user, onLogout, isVisible, onClose }: UserProfileProps) {
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
+  
   if (!isVisible) return null;
 
   const limit = TIER_LIMITS[user.subscriptionTier as keyof typeof TIER_LIMITS] || 5;
@@ -211,6 +215,17 @@ export default function UserProfile({ user, onLogout, isVisible, onClose }: User
                 <Settings className="w-5 h-5 text-gray-400 group-hover:text-violet-500 mr-3 transition-colors" />
                 <span className="font-medium text-gray-700 group-hover:text-gray-900">Account Settings</span>
               </button>
+              <button 
+                onClick={() => setShowNotificationSettings(true)}
+                className="group flex items-center justify-center px-6 py-4 bg-white border-2 border-gray-100 rounded-xl shadow-sm hover:border-violet-200 hover:shadow-md transition-all duration-200"
+              >
+                <Bell className="w-5 h-5 text-gray-400 group-hover:text-violet-500 mr-3 transition-colors" />
+                <span className="font-medium text-gray-700 group-hover:text-gray-900">Notifications</span>
+              </button>
+            </div>
+            
+            {/* Additional actions row */}
+            <div className="grid grid-cols-1 gap-4 mb-6">
               <button className="group flex items-center justify-center px-6 py-4 bg-white border-2 border-gray-100 rounded-xl shadow-sm hover:border-violet-200 hover:shadow-md transition-all duration-200">
                 <BarChart3 className="w-5 h-5 text-gray-400 group-hover:text-violet-500 mr-3 transition-colors" />
                 <span className="font-medium text-gray-700 group-hover:text-gray-900">View Analytics</span>
@@ -236,6 +251,13 @@ export default function UserProfile({ user, onLogout, isVisible, onClose }: User
           </div>
         </div>
       </div>
+      
+      {/* Notification Settings Modal */}
+      <NotificationSettings
+        isVisible={showNotificationSettings}
+        onClose={() => setShowNotificationSettings(false)}
+        userId={user.id}
+      />
     </div>
   );
 }

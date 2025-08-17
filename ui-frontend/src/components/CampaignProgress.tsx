@@ -144,8 +144,8 @@ export default function CampaignProgress({ campaign }: CampaignProgressProps) {
         <h4 className="text-sm font-semibold text-gray-700 mb-3">Progress Timeline</h4>
         {steps.map((step, index) => {
           const config = stepConfig[step];
-          const isCompleted = index < currentStepIndex || (index === currentStepIndex && status === 'COMPLETED');
-          const isCurrent = index === currentStepIndex && status !== 'COMPLETED';
+          const isCompleted = index < currentStepIndex || (index === currentStepIndex && campaign.status === 'COMPLETED');
+          const isCurrent = index === currentStepIndex && campaign.status !== 'COMPLETED';
           const isUpcoming = index > currentStepIndex;
           
           return (

@@ -2,5 +2,6 @@ fastapi
 uvicorn
 google-genai
 pillow
+pillow-heif
 requests
 python-multipart

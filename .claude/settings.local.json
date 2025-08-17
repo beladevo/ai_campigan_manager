@@ -28,7 +28,9 @@
       "Bash(npm ls:*)",
       "Bash(taskkill:*)",
       "Bash(npm run seed:dev:*)",
-      "Bash(POSTGRES_HOST=localhost POSTGRES_PORT=5432 POSTGRES_USER=postgres POSTGRES_PASSWORD=postgres POSTGRES_DB=solara RABBITMQ_URL=amqp://rabbitmq:rabbitmq@localhost:5672 JWT_SECRET=test-secret npm run seed:dev)"
+      "Bash(POSTGRES_HOST=localhost POSTGRES_PORT=5432 POSTGRES_USER=postgres POSTGRES_PASSWORD=postgres POSTGRES_DB=solara RABBITMQ_URL=amqp://rabbitmq:rabbitmq@localhost:5672 JWT_SECRET=test-secret npm run seed:dev)",
+      "Bash(npm start)",
+      "Bash(npm test)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

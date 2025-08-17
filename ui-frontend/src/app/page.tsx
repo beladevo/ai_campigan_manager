@@ -6,6 +6,8 @@ import AuthForm from '@/components/AuthForm';
 import CampaignCreator from '@/components/CampaignCreator';
 import CampaignDashboard from '@/components/CampaignDashboard';
 import UserProfile from '@/components/UserProfile';
+import NotificationDropdown from '@/components/NotificationDropdown';
+import NotificationSettings from '@/components/NotificationSettings';
 import { Campaign } from '@/types/campaign';
 import { getAllCampaigns, getUserUsage } from '@/lib/api';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -19,6 +21,7 @@ function AuthenticatedApp() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [activeTab, setActiveTab] = useState<'create' | 'dashboard' | 'analytics' | 'templates'>('dashboard');
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [usage, setUsage] = useState<{
@@ -45,6 +48,11 @@ function AuthenticatedApp() {
     },
     onCampaignError: (data) => {
       console.error('❌ Campaign error:', data);
+    },
+    onNotification: (data) => {
+      console.log('🔔 Notification received:', data);
+      // The NotificationDropdown will handle refreshing its own state
+      // We could also show a toast notification here if desired
     },
   });
 
@@ -200,14 +208,9 @@ function AuthenticatedApp() {
                 }`}>
                   <Search className="w-5 h-5" />
                 </button>
-                <button className={`p-2 rounded-full transition-all duration-200 hover:scale-110 relative ${
-                  isDarkMode 
-                    ? 'text-slate-400 hover:text-white hover:bg-slate-700/50' 
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                }`}>
-                  <Bell className="w-5 h-5" />
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-bounce"></div>
-                </button>
+                <NotificationDropdown 
+                  onOpenSettings={() => setShowNotificationSettings(true)}
+                />
                 <button 
                   onClick={() => setIsDarkMode(!isDarkMode)}
                   className={`p-2 rounded-full transition-all duration-200 hover:scale-110 ${
@@ -377,6 +380,15 @@ function AuthenticatedApp() {
           onLogout={logout}
           isVisible={showUserProfile}
           onClose={() => setShowUserProfile(false)}
+        />
+      )}
+
+      {/* Notification Settings Modal */}
+      {user && (
+        <NotificationSettings
+          isVisible={showNotificationSettings}
+          onClose={() => setShowNotificationSettings(false)}
+          userId={user.id}
         />
       )}
     </div>

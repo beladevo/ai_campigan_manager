@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { 
   Home, 
   BarChart3, 
-  Template, 
+  FileText, 
   History, 
   Settings, 
   User, 
@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import CampaignDashboard from './CampaignDashboard';
 import AnalyticsDashboard from './AnalyticsDashboard';
-import TemplatesLibrary from './TemplatesLibrary';
+import TemplateLibrary from './TemplateLibrary';
 import CampaignHistory from './CampaignHistory';
 import UserSettings from './UserSettings';
 import CampaignCreator from './CampaignCreator';
@@ -80,7 +80,7 @@ export default function AppLayout({ initialCampaigns = [] }: AppLayoutProps) {
     { 
       id: 'templates', 
       name: 'Templates', 
-      icon: Template, 
+      icon: FileText, 
       current: currentView === 'templates' 
     },
     { 
@@ -127,7 +127,13 @@ export default function AppLayout({ initialCampaigns = [] }: AppLayoutProps) {
       case 'analytics':
         return <AnalyticsDashboard campaigns={campaigns} />;
       case 'templates':
-        return <TemplatesLibrary onSelectTemplate={handleTemplateSelect} />;
+        return (
+          <TemplateLibrary 
+            onSelectTemplate={handleTemplateSelect} 
+            onClose={() => setCurrentView('dashboard')}
+            isModal={false}
+          />
+        );
       case 'history':
         return <CampaignHistory campaigns={campaigns} />;
       case 'settings':
@@ -136,7 +142,6 @@ export default function AppLayout({ initialCampaigns = [] }: AppLayoutProps) {
         return (
           <CampaignCreator 
             onCampaignCreated={handleCampaignCreated}
-            onCancel={() => setCurrentView('dashboard')}
           />
         );
       default:

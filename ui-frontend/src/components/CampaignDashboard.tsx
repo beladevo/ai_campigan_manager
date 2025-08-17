@@ -7,11 +7,14 @@ import {
   Clock, CheckCircle, XCircle, Loader2, Eye, Download, Copy, Bell, 
   Share2, Heart, Bookmark, MoreVertical, Trash2, Edit3, Filter,
   Search, Calendar, TrendingUp, ExternalLink, Twitter, Facebook,
-  Linkedin, Instagram, MessageCircle, Sparkles, Palette, FileText
+  Linkedin, Instagram, MessageCircle, Sparkles, Palette, FileText,
+  FileDown
 } from 'lucide-react';
 import CampaignProgress from './CampaignProgress';
 import MarkdownRenderer from './MarkdownRenderer';
 import MarkdownPreview from './MarkdownPreview';
+import CampaignDetailsModal from './CampaignDetailsModal';
+import ExportModal from './ExportModal';
 
 interface CampaignDashboardProps {
   campaigns: Campaign[];
@@ -53,6 +56,25 @@ export default function CampaignDashboard({ campaigns, setCampaigns }: CampaignD
   const [searchTerm, setSearchTerm] = useState('');
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [showShareModal, setShowShareModal] = useState<Campaign | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [selectedCampaignsForExport, setSelectedCampaignsForExport] = useState<string[]>([]);
+  const [bulkSelectMode, setBulkSelectMode] = useState(false);
+
+  // Helper function to clean image paths
+  const getCleanImageUrl = (imagePath: string) => {
+    if (!imagePath) return '';
+    if (imagePath.startsWith('http')) return imagePath;
+    
+    // Strip all variations of path prefixes to get just the filename
+    const cleanPath = imagePath
+      .replace(/^\/app\/output\//, '')     // Remove /app/output/
+      .replace(/^app\/output\//, '')       // Remove app/output/
+      .replace(/^\/output\//, '')          // Remove /output/
+      .replace(/^output\//, '')            // Remove output/
+      .replace(/^\//, '');                 // Remove leading slash
+    
+    return `http://localhost:3000/output/${cleanPath}`;
+  };
 
   // Real-time polling for active campaigns
   useEffect(() => {
@@ -119,9 +141,7 @@ export default function CampaignDashboard({ campaigns, setCampaigns }: CampaignD
 
   const downloadImage = (imagePath: string, campaignId: string) => {
     const link = document.createElement('a');
-    const imageUrl = imagePath?.startsWith('http') 
-      ? imagePath 
-      : `http://localhost:3000/output/${imagePath}`;
+    const imageUrl = getCleanImageUrl(imagePath);
     link.href = imageUrl;
     link.download = `campaign_${campaignId}_image.png`;
     link.click();
@@ -151,6 +171,38 @@ export default function CampaignDashboard({ campaigns, setCampaigns }: CampaignD
       window.open(urls[platform as keyof typeof urls], '_blank', 'width=600,height=400');
     }
     setShowShareModal(null);
+  };
+
+  const toggleCampaignSelection = (campaignId: string) => {
+    setSelectedCampaignsForExport(prev => 
+      prev.includes(campaignId) 
+        ? prev.filter(id => id !== campaignId)
+        : [...prev, campaignId]
+    );
+  };
+
+  const selectAllCampaigns = () => {
+    setSelectedCampaignsForExport(filteredCampaigns.map(c => c.id));
+  };
+
+  const clearSelection = () => {
+    setSelectedCampaignsForExport([]);
+    setBulkSelectMode(false);
+  };
+
+  const handleExportSelected = () => {
+    if (selectedCampaignsForExport.length > 0) {
+      setShowExportModal(true);
+    }
+  };
+
+  const handleExportSingle = (campaign: Campaign) => {
+    setSelectedCampaignsForExport([campaign.id]);
+    setShowExportModal(true);
+  };
+
+  const getSelectedCampaigns = () => {
+    return campaigns.filter(c => selectedCampaignsForExport.includes(c.id));
   };
 
   // Filter campaigns based on search and status
@@ -229,6 +281,18 @@ export default function CampaignDashboard({ campaigns, setCampaigns }: CampaignD
               </select>
             </div>
 
+            {/* Bulk Actions Button */}
+            <button
+              onClick={() => setBulkSelectMode(!bulkSelectMode)}
+              className={`px-4 py-3 rounded-xl border-2 transition-all font-medium ${
+                bulkSelectMode
+                  ? 'bg-violet-100 border-violet-300 text-violet-700'
+                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+
             {/* View Mode Toggle */}
             <div className="flex items-center bg-gray-100 rounded-xl p-1">
               <button
@@ -262,6 +326,44 @@ export default function CampaignDashboard({ campaigns, setCampaigns }: CampaignD
               </button>
             </div>
           </div>
+
+          {/* Bulk Selection Toolbar */}
+          {bulkSelectMode && (
+            <div className="mt-4 p-4 bg-violet-50 border border-violet-200 rounded-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm font-medium text-violet-700">
+                    {selectedCampaignsForExport.length} of {filteredCampaigns.length} selected
+                  </span>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={selectAllCampaigns}
+                      className="text-sm text-violet-600 hover:text-violet-700 font-medium"
+                    >
+                      Select All
+                    </button>
+                    <span className="text-gray-400">|</span>
+                    <button
+                      onClick={clearSelection}
+                      className="text-sm text-gray-600 hover:text-gray-700 font-medium"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleExportSelected}
+                    disabled={selectedCampaignsForExport.length === 0}
+                    className="flex items-center space-x-2 bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FileDown className="w-4 h-4" />
+                    <span>Export Selected</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -279,23 +381,12 @@ export default function CampaignDashboard({ campaigns, setCampaigns }: CampaignD
                 {campaign.imagePath && (
                   <div className="aspect-video bg-gradient-to-br from-violet-100 to-purple-100 relative overflow-hidden">
                     <img
-                      src={campaign.imagePath?.startsWith('http') 
-                        ? campaign.imagePath 
-                        : `http://localhost:3000/output/${campaign.imagePath}`}
+                      src={getCleanImageUrl(campaign.imagePath!)}
                       alt="Campaign preview"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.parentElement!.innerHTML = `
-                          <div class="w-full h-full flex items-center justify-center">
-                            <div class="text-center text-violet-500">
-                              <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                              </svg>
-                              <div class="text-sm font-medium">Generated Image</div>
-                            </div>
-                          </div>
-                        `;
+                        e.currentTarget.src = 'https://www.svgrepo.com/show/451131/no-image.svg';
+                        e.currentTarget.className = 'w-full h-full object-contain p-4 bg-gray-100';
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
@@ -331,26 +422,50 @@ export default function CampaignDashboard({ campaigns, setCampaigns }: CampaignD
                   </div>
                 </div>
 
+                {/* Selection Checkbox */}
+                {bulkSelectMode && (
+                  <div className="absolute top-4 left-4 z-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedCampaignsForExport.includes(campaign.id)}
+                      onChange={() => toggleCampaignSelection(campaign.id)}
+                      className="w-5 h-5 text-violet-600 border-2 border-white rounded focus:ring-violet-500 bg-white/90 backdrop-blur-sm"
+                    />
+                  </div>
+                )}
+
                 {/* Action Buttons */}
                 <div className="absolute top-4 right-4 flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => toggleFavorite(campaign.id)}
-                    className={`p-2 rounded-full backdrop-blur-sm transition-all ${
-                      favoriteIds.has(campaign.id)
-                        ? 'bg-red-500 text-white'
-                        : 'bg-white/80 text-gray-600 hover:bg-white hover:text-red-500'
-                    }`}
-                  >
-                    <Heart className={`w-4 h-4 ${favoriteIds.has(campaign.id) ? 'fill-current' : ''}`} />
-                  </button>
-                  
-                  {campaign.status === 'COMPLETED' && (
-                    <button
-                      onClick={() => setShowShareModal(campaign)}
-                      className="p-2 rounded-full bg-white/80 text-gray-600 hover:bg-white hover:text-violet-500 transition-all"
-                    >
-                      <Share2 className="w-4 h-4" />
-                    </button>
+                  {!bulkSelectMode && (
+                    <>
+                      <button
+                        onClick={() => handleExportSingle(campaign)}
+                        className="p-2 rounded-full bg-white/80 text-gray-600 hover:bg-white hover:text-emerald-500 transition-all"
+                        title="Export campaign"
+                      >
+                        <FileDown className="w-4 h-4" />
+                      </button>
+                      
+                      <button
+                        onClick={() => toggleFavorite(campaign.id)}
+                        className={`p-2 rounded-full backdrop-blur-sm transition-all ${
+                          favoriteIds.has(campaign.id)
+                            ? 'bg-red-500 text-white'
+                            : 'bg-white/80 text-gray-600 hover:bg-white hover:text-red-500'
+                        }`}
+                      >
+                        <Heart className={`w-4 h-4 ${favoriteIds.has(campaign.id) ? 'fill-current' : ''}`} />
+                      </button>
+                      
+                      {campaign.status === 'COMPLETED' && (
+                        <button
+                          onClick={() => setShowShareModal(campaign)}
+                          className="p-2 rounded-full bg-white/80 text-gray-600 hover:bg-white hover:text-violet-500 transition-all"
+                        >
+                          <Share2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -461,20 +576,12 @@ export default function CampaignDashboard({ campaigns, setCampaigns }: CampaignD
                     <div className="w-16 h-16 rounded-xl overflow-hidden bg-gradient-to-br from-violet-100 to-purple-100 flex-shrink-0">
                       {campaign.imagePath ? (
                         <img
-                          src={campaign.imagePath?.startsWith('http') 
-                            ? campaign.imagePath 
-                            : `http://localhost:3000/output/${campaign.imagePath}`}
+                          src={getCleanImageUrl(campaign.imagePath!)}
                           alt="Campaign"
                           className="w-full h-full object-cover"
                           onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.parentElement!.innerHTML = `
-                              <div class="w-full h-full flex items-center justify-center text-violet-500">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                </svg>
-                              </div>
-                            `;
+                            e.currentTarget.src = 'https://www.svgrepo.com/show/451131/no-image.svg';
+                            e.currentTarget.className = 'w-full h-full object-contain p-2 bg-gray-100';
                           }}
                         />
                       ) : (
@@ -603,85 +710,19 @@ export default function CampaignDashboard({ campaigns, setCampaigns }: CampaignD
         </div>
       )}
 
-      {selectedCampaign && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-gray-900">
-                Campaign Details - {selectedCampaign.id.slice(-8)}
-              </h3>
-              <button
-                onClick={() => setSelectedCampaign(null)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+      <CampaignDetailsModal
+        campaign={selectedCampaign}
+        onClose={() => setSelectedCampaign(null)}
+      />
 
-            <div className="p-6 space-y-6">
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Original Prompt</h4>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-gray-700">{selectedCampaign.prompt}</p>
-                </div>
-              </div>
-
-              {selectedCampaign.generatedText && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div></div>
-                    <button
-                      onClick={() => copyToClipboard(selectedCampaign.generatedText!)}
-                      className="flex items-center px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-indigo-200"
-                    >
-                      <Copy className="w-4 h-4 mr-2" />
-                      Copy Content
-                    </button>
-                  </div>
-                  <MarkdownPreview content={selectedCampaign.generatedText} showToggle={true} />
-                </div>
-              )}
-
-              {selectedCampaign.imagePath && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold text-gray-900">Generated Image</h4>
-                    <button
-                      onClick={() => downloadImage(selectedCampaign.imagePath!, selectedCampaign.id)}
-                      className="flex items-center px-3 py-1 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                    >
-                      <Download className="w-4 h-4 mr-1" />
-                      Download
-                    </button>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <img
-                      src={selectedCampaign.imagePath?.startsWith('http') 
-                        ? selectedCampaign.imagePath 
-                        : `http://localhost:3000/output/${selectedCampaign.imagePath}`}
-                      alt="Generated campaign image"
-                      className="max-w-full h-auto rounded-lg shadow-md"
-                      onError={(e) => {
-                        console.error('Image failed to load:', e.currentTarget.src);
-                        console.log('imagePath value:', selectedCampaign.imagePath);
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between text-sm text-gray-500 pt-4 border-t border-gray-200">
-                <span>User ID: {selectedCampaign.userId}</span>
-                <span>
-                  Created: {new Date(selectedCampaign.createdAt).toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ExportModal
+        campaigns={getSelectedCampaigns()}
+        isVisible={showExportModal}
+        onClose={() => {
+          setShowExportModal(false);
+          setSelectedCampaignsForExport([]);
+        }}
+      />
     </div>
   );
 }

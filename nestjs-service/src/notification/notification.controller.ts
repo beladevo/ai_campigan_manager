@@ -17,7 +17,7 @@ export class NotificationController {
     @Query('limit') limit?: string,
   ) {
     const userId = req.user.userId;
-    const limitNum = limit ? parseInt(limit, 10) : 20;
+    const limitNum = limit ? parseInt(limit, 10) || 20 : 20;
     
     const notifications = await this.notificationService.getUserNotifications(userId, limitNum);
     return { notifications };

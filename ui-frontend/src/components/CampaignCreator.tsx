@@ -1,67 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { Campaign, CreateCampaignRequest, CampaignTemplate } from '@/types/campaign';
+import { Campaign, CreateCampaignRequest } from '@/types/campaign';
+import { CampaignTemplate, campaignTemplates } from '@/data/campaignTemplates';
 import { createCampaign } from '@/lib/api';
+import TemplateLibrary from './TemplateLibrary';
 import { 
   ShoppingBag, Share2, PenTool, Mail, Megaphone, Sparkles, 
   ArrowLeft, ArrowRight, Check, Zap, Target, Users, Palette,
-  ChevronRight, FileText, Settings, Rocket, Play
+  ChevronRight, FileText, Settings, Rocket, Play, BookOpen
 } from 'lucide-react';
 
-const templates: CampaignTemplate[] = [
-  {
-    id: '1',
-    name: 'Product Launch',
-    description: 'Launch a new product with compelling copy and visuals',
-    category: 'e-commerce',
-    promptTemplate: 'Create an exciting product launch campaign for {productName}. Highlight key features: {features}. Target audience: {audience}.',
-    icon: 'shopping-bag'
-  },
-  {
-    id: '2',
-    name: 'Social Media Post',
-    description: 'Engaging social media content for your brand',
-    category: 'social-media',
-    promptTemplate: 'Create an engaging social media post about {topic}. Tone: {tone}. Include call-to-action for {cta}.',
-    icon: 'share-2'
-  },
-  {
-    id: '3',
-    name: 'Blog Article',
-    description: 'Professional blog content for your website',
-    category: 'blog',
-    promptTemplate: 'Write a comprehensive blog article about {topic}. Target keywords: {keywords}. Audience level: {level}.',
-    icon: 'pen-tool'
-  },
-  {
-    id: '4',
-    name: 'Email Campaign',
-    description: 'Effective email marketing content',
-    category: 'email',
-    promptTemplate: 'Create an email campaign for {campaign_type}. Subject line focus: {subject}. Key message: {message}.',
-    icon: 'mail'
-  },
-  {
-    id: '5',
-    name: 'Advertisement Copy',
-    description: 'High-converting ad copy for paid campaigns',
-    category: 'ad-copy',
-    promptTemplate: 'Create compelling ad copy for {platform}. Product/service: {offering}. Unique selling point: {usp}.',
-    icon: 'megaphone'
-  }
-];
-
-const getIcon = (iconName: string) => {
-  switch (iconName) {
-    case 'shopping-bag': return <ShoppingBag className="w-6 h-6" />;
-    case 'share-2': return <Share2 className="w-6 h-6" />;
-    case 'pen-tool': return <PenTool className="w-6 h-6" />;
-    case 'mail': return <Mail className="w-6 h-6" />;
-    case 'megaphone': return <Megaphone className="w-6 h-6" />;
-    default: return <Sparkles className="w-6 h-6" />;
-  }
-};
 
 interface CampaignCreatorProps {
   onCampaignCreated: (campaign: Campaign) => void;
@@ -77,6 +26,7 @@ export default function CampaignCreator({ onCampaignCreated, usage }: CampaignCr
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<'template' | 'details' | 'audience' | 'review' | 'generating'>('template');
+  const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
   const [campaignDetails, setCampaignDetails] = useState({
     title: '',
     objective: '',
@@ -99,6 +49,17 @@ export default function CampaignCreator({ onCampaignCreated, usage }: CampaignCr
 
   const handleTemplateSelect = (template: CampaignTemplate) => {
     setSelectedTemplate(template);
+    setPrompt(template.prompt);
+    setCampaignDetails(prev => ({
+      ...prev,
+      title: template.name,
+      targetAudience: template.targetAudience,
+    }));
+    setStep('details');
+  };
+
+  const handleTemplateFromLibrary = (template: CampaignTemplate) => {
+    setSelectedTemplate(template);
     setCampaignDetails(prev => ({ ...prev, title: template.name }));
     setStep('details');
   };
@@ -118,7 +79,7 @@ export default function CampaignCreator({ onCampaignCreated, usage }: CampaignCr
   };
 
   const generateFinalPrompt = () => {
-    const templateBase = selectedTemplate?.promptTemplate || '';
+    const templateBase = selectedTemplate?.prompt || '';
     return `${templateBase}
 
 Campaign Title: ${campaignDetails.title}
@@ -264,36 +225,24 @@ Please create compelling marketing content based on these specifications.`;
               <h2 className="text-3xl font-bold text-gray-900 mb-4">
                 Choose Your Campaign Type
               </h2>
-              <p className="text-gray-600 text-lg">
+              <p className="text-gray-600 text-lg mb-6">
                 Select a professionally crafted template to get started
               </p>
+              
+              {/* Template Library Button */}
+              <button
+                onClick={() => setShowTemplateLibrary(true)}
+                className="inline-flex items-center space-x-2 bg-gradient-to-r from-violet-500 to-purple-500 text-white px-6 py-3 rounded-full hover:shadow-lg hover:shadow-violet-500/25 transition-all duration-200 font-semibold"
+              >
+                <BookOpen className="w-5 h-5" />
+                <span>Browse Template Library ({campaignTemplates.length} Templates)</span>
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {templates.map((template) => (
-                <button
-                  key={template.id}
-                  onClick={() => handleTemplateSelect(template)}
-                  className="group p-6 border-2 border-gray-200 rounded-2xl hover:border-violet-300 hover:shadow-xl transition-all duration-300 text-left"
-                >
-                  <div className="flex items-center mb-4">
-                    <div className="p-3 bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl group-hover:from-violet-500 group-hover:to-purple-500 group-hover:text-white transition-all duration-300">
-                      {getIcon(template.icon)}
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="font-bold text-gray-900 group-hover:text-violet-600 transition-colors">
-                        {template.name}
-                      </h3>
-                      <span className="text-xs text-violet-500 bg-violet-50 px-2 py-1 rounded-full">
-                        {template.category.replace('-', ' ')}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-gray-600 text-sm leading-relaxed">
-                    {template.description}
-                  </p>
-                </button>
-              ))}
+            <div className="mt-8 text-center">
+              <p className="text-gray-500 text-sm mb-4">
+                Or skip templates and create your own custom campaign
+              </p>
             </div>
 
             <div className="border-t border-gray-200 pt-6">
@@ -483,8 +432,8 @@ Please create compelling marketing content based on these specifications.`;
             <div className="bg-gray-50 rounded-2xl p-6 space-y-4">
               {selectedTemplate && (
                 <div className="flex items-center p-4 bg-white rounded-xl">
-                  <div className="p-2 bg-violet-100 rounded-lg mr-3">
-                    {getIcon(selectedTemplate.icon)}
+                  <div className="p-2 bg-violet-100 rounded-lg mr-3 text-2xl">
+                    {selectedTemplate.icon}
                   </div>
                   <div>
                     <div className="font-semibold text-gray-900">Template</div>
@@ -577,6 +526,14 @@ Please create compelling marketing content based on these specifications.`;
           </div>
         )}
       </div>
+
+      {/* Template Library Modal */}
+      {showTemplateLibrary && (
+        <TemplateLibrary
+          onSelectTemplate={handleTemplateFromLibrary}
+          onClose={() => setShowTemplateLibrary(false)}
+        />
+      )}
     </div>
   );
 }

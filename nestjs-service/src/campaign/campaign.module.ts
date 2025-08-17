@@ -5,9 +5,10 @@ import { InternalCampaignController } from './internal-campaign.controller';
 import { CampaignService } from './campaign.service';
 import { Campaign } from './entities/campaign.entity';
 import { RabbitMQModule } from '../rabbitmq/rabbitmq.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Campaign]), RabbitMQModule],
+  imports: [TypeOrmModule.forFeature([Campaign]), RabbitMQModule, NotificationModule],
   controllers: [CampaignController, InternalCampaignController, CampaignService],
   providers: [CampaignService],
 })

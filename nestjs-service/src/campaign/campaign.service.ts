@@ -11,6 +11,8 @@ import { Campaign, CampaignStatus, CampaignStep } from "./entities/campaign.enti
 import { CreateCampaignDto } from "./dto/create-campaign.dto";
 import { RabbitMQService } from "../rabbitmq/rabbitmq.service";
 import { CampaignResultMessage } from "../rabbitmq/types";
+import { NotificationService } from "../notification/services/notification.service";
+import { NotificationType } from "../notification/entities/notification-preference.entity";
 
 @Controller()
 @Injectable()
@@ -20,7 +22,8 @@ export class CampaignService {
   constructor(
     @InjectRepository(Campaign)
     private campaignRepository: Repository<Campaign>,
-    private rabbitMQService: RabbitMQService
+    private rabbitMQService: RabbitMQService,
+    private notificationService: NotificationService
   ) {}
 
   async create(createCampaignDto: CreateCampaignDto, user: any): Promise<Campaign> {
@@ -49,6 +52,22 @@ export class CampaignService {
         new Date()
       );
       this.logger.log(`Campaign ${savedCampaign.id} queued for processing`);
+
+      // Send campaign started notification
+      try {
+        await this.notificationService.createNotification({
+          userId: user.id,
+          type: NotificationType.CAMPAIGN_STARTED,
+          title: '🚀 Campaign Generation Started',
+          message: `Your campaign "${savedCampaign.prompt.substring(0, 50)}..." has been queued for generation.`,
+          data: {
+            campaignId: savedCampaign.id,
+            campaignTitle: savedCampaign.prompt.substring(0, 50),
+          },
+        });
+      } catch (notificationError) {
+        this.logger.error(`Failed to send campaign started notification:`, notificationError);
+      }
     } catch (error) {
       this.logger.error(`Failed to queue campaign ${savedCampaign.id}:`, error);
       await this.updateCampaignStatus(
@@ -108,6 +127,26 @@ export class CampaignService {
           CampaignStatus.FAILED,
           error
         );
+
+        // Send campaign failed notification
+        try {
+          const campaign = await this.campaignRepository.findOne({ where: { id: campaignId } });
+          if (campaign) {
+            await this.notificationService.createNotification({
+              userId: campaign.userId,
+              type: NotificationType.CAMPAIGN_FAILED,
+              title: '❌ Campaign Generation Failed',
+              message: `Your campaign "${campaign.prompt.substring(0, 50)}..." failed to generate. Please try again.`,
+              data: {
+                campaignId: campaignId,
+                campaignTitle: campaign.prompt.substring(0, 50),
+                error: error,
+              },
+            });
+          }
+        } catch (notificationError) {
+          this.logger.error(`Failed to send campaign failed notification:`, notificationError);
+        }
       } else {
         this.logger.log(`Campaign ${campaignId} completed successfully`);
         this.logger.log(`Generated text length: ${generatedText?.length || 0}`);
@@ -126,6 +165,27 @@ export class CampaignService {
         this.logger.log(
           `Database updated successfully for campaign ${campaignId}`
         );
+
+        // Send campaign completed notification
+        try {
+          const campaign = await this.campaignRepository.findOne({ where: { id: campaignId } });
+          if (campaign) {
+            await this.notificationService.createNotification({
+              userId: campaign.userId,
+              type: NotificationType.CAMPAIGN_COMPLETED,
+              title: '🎉 Campaign Generation Complete!',
+              message: `Your campaign "${campaign.prompt.substring(0, 50)}..." has been successfully generated and is ready to view.`,
+              data: {
+                campaignId: campaignId,
+                campaignTitle: campaign.prompt.substring(0, 50),
+                hasImage: !!imagePath,
+                textLength: generatedText?.length || 0,
+              },
+            });
+          }
+        } catch (notificationError) {
+          this.logger.error(`Failed to send campaign completed notification:`, notificationError);
+        }
       }
     } catch (dbError) {
       this.logger.error(

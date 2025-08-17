@@ -6,7 +6,10 @@
     "start": "npm run build && node dist/main.js",
     "start:dev": "nodemon --watch src --ext ts --exec npm run start",
     "seed": "npm run build && node dist/database/commands/seed.command.js",
-    "seed:dev": "ts-node src/database/commands/seed.command.ts"
+    "seed:dev": "ts-node src/database/commands/seed.command.ts",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@nestjs/common": "^9.0.0",
@@ -43,13 +46,30 @@
     "uuid": "^9.0.0"
   },
   "devDependencies": {
+    "@nestjs/testing": "^9.4.3",
     "@types/amqplib": "^0.10.7",
     "@types/bcrypt": "^5.0.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^18.0.0",
     "@types/nodemailer": "^6.4.7",
     "@types/passport-jwt": "^3.0.8",
     "@types/passport-local": "^1.0.35",
     "@types/serve-static": "^1.15.8",
-    "@types/uuid": "^9.0.0"
+    "@types/uuid": "^9.0.0",
+    "jest": "^30.0.5",
+    "supertest": "^7.1.4",
+    "ts-jest": "^29.4.1"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "roots": ["<rootDir>/src"],
+    "testMatch": ["**/__tests__/**/*.test.ts", "**/?(*.)+(spec|test).ts"],
+    "collectCoverageFrom": [
+      "src/**/*.{ts,js}",
+      "!src/**/*.d.ts",
+      "!src/main.ts",
+      "!src/**/*.module.ts"
+    ]
   }
 }
